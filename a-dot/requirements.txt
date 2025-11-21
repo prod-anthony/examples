@@ -1,0 +1,2 @@
+flask>=3.0.0
+flask-openapi3[swagger,redoc]>=3.0.0
