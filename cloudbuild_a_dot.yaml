@@ -12,7 +12,7 @@ steps:
         export DOCKER_BUILDKIT=1
         docker build --file a-dot/Dockerfile \
           -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:${SHORT_SHA} \
-          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:latest .
+          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:latest a-dot
   
 # push-image
   - name: 'gcr.io/cloud-builders/docker'
