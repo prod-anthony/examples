@@ -1,4 +1,6 @@
+import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -13,6 +15,7 @@ app = OpenAPI(__name__, info=info)
 
 # Configuration
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "./outputs"))
+ARTIFACTS_DIR = Path(os.getenv("ARTIFACTS_DIR", "/opt/airflow/artifacts"))
 FRESHNESS_SECONDS = int(os.getenv("FRESHNESS_SECONDS", 600))  # 10 minutes
 
 # Initialize Airflow client
@@ -41,6 +44,15 @@ class StatusResponse(BaseModel):
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     output_path: Optional[str] = None
+
+
+class ArtifactPath(BaseModel):
+    file_name: str = Field(..., description="Name of the artifact file")
+
+
+class ArtifactResponse(BaseModel):
+    file_name: str
+    content: dict
 
 
 def get_output_path(script_name: str) -> Path:
@@ -147,6 +159,42 @@ def get_script_status(path: ScriptPath):
 
         return response
 
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+
+
+def is_valid_filename(file_name: str) -> bool:
+    """Validate filename - only alphanumeric, underscore, and hyphen allowed."""
+    return bool(re.match(r"^[\w\-]+$", file_name))
+
+
+@app.get("/artifacts/<file_name>", responses={200: ArtifactResponse})
+def get_artifact(path: ArtifactPath):
+    """
+    Get the content of an artifact file.
+
+    Returns the JSON content of the specified file from /opt/airflow/artifacts.
+    File name should only contain alphanumeric, underscore, or hyphen.
+    Extension .json is automatically appended.
+    """
+    file_name = path.file_name
+
+    if not is_valid_filename(file_name):
+        return {"status": "error", "message": "Invalid filename. Only alphanumeric, underscore, and hyphen allowed."}, 400
+
+    file_path = ARTIFACTS_DIR / f"{file_name}.json"
+
+    if not file_path.exists():
+        return {"status": "error", "message": "File not found"}, 404
+
+    try:
+        with open(file_path) as f:
+            content = json.load(f)
+
+        return {"file_name": file_name, "content": content}
+
+    except json.JSONDecodeError:
+        return {"status": "error", "message": "File is not valid JSON"}, 400
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
 
