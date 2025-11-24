@@ -1,0 +1,38 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+# build-image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    entrypoint: 'bash'
+    args: 
+      - '-c'
+      - |
+        export DOCKER_BUILDKIT=1
+        docker build --file a-dot/Dockerfile \
+          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:${SHORT_SHA} \
+          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:latest .
+  
+# push-image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Pushing Docker image to registry..."
+        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:${SHORT_SHA}
+        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:latest
+        echo "Docker image pushed successfully"
+
+# Define the images to be pushed
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/a-dot:latest'
+
+# Substitutions for better maintainability
+substitutions:
+  _REGION: 'asia-southeast1'
+  _REPOSITORY: 'pendle-registry'
+  
